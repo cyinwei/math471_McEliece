@@ -1,0 +1,209 @@
+#+TITLE: An Programmatic Introduction to the McEliece Cryptosystem
+#+AUTHOR: Daniel Medina, Yinwei (Charlie) Zhang
+
+/begin{abstract}
+
+In this paper, we introduce the McEliece cryptosystem, published by McEliece in 1978.  We explore the machinery behind the system, which includes Goppa codes, providing background on Galois Fields, and
+
+/end{abstract}
+
+* Introduction
+
+   Cryptography lets us communicate securely.  Cryptosystems are used for exchanging messages, for identification with signatures, and even in currencies.  Many modern cryptosystems are public key based, since then the channel of communication, like the internet, doesn't have to be secure.  Other people can grab the encrypted information, but can't decrypt it in a reasonable amount of time.  Public key cryptosystems are built on asymmetric decoding times, so the person with the private key can decrypt it fast, in $P$ time, while an attacker can only decrypt it slowly, in $NP$ time.
+
+   Modern cryptosystems, like the popular RSA cryptosystem [[RSA][(1)]], are based on factoring large integers into primes.  Factoring primes is in $NP$, since we can verify that $p \mid n$, but we currently can't solve the problem in polynomial time.  However, with the introduction of quantum computers, it turns out that we can factor numbers in polynomial time.  Shor found such a quantum algorithm in 1994 [5].  Therefore, the attacker can decrypt a encrypted message in a reasonable amount of time without knowing the private key, breaking the cryptosystem.
+
+   So in a post-quantum world [[PQCrypto][(2)]], cryptosystems that depend on prime factorization, like RSA, elliptic curves, don't work.  There are some other $NP$ problems in number theory that don't have polynomial time solvability in quantum computers, and there are cryptosystems based on those aren't broken.  The McEliece cryptosystem uses coding theory, particularly linear codes, and the Goppa code as the $NP$ problem.  It currently has no known polynomial
+
+* McEliece
+
+The McEliece cryptosystem [[McEliece][(3)]] is an asymmetric public key cryptographic system that uses error correcting codes for generating the public and private keys, and consequently, for the encryption and decryption processes. The McEliece cryptosystem makes use of binary Goppa codes in its original description.  Note that the generation of the keys and the encryption process itself is probablistic.  Both processes choose randomly a Goppa code and random vector respectively.  The decryption process is deterministic.
+
+** Parameters
+
+The alphabet of the cryptosystem is $\{0,1\}^n$, where $n$ is the length of the code, so the alphabet is binary.  The other parameter is $t$, which is the maximum number of errors to be corrected by internal code.
+
+** Key Generation
+
+$G'$ is the scrambled code matrix, and is defined as
+
+$$ G' = SGP $$
+
+$S$ is a scramble matrix, a non-invertible matrix of dimensions $(k, k)$.  $G$ is the generator matrix from our linear code of dimensions (k, n).  $P$ is a permutation matrix of dimensions (k, k).  A permutation matrix The resultant matrix, $G'$ has dimensions $(k, n)$.
+
+The public key is $(G', t)$.
+
+The private key is $(S, G, P)$.  If we are using Goppa codes, we also need the Goppa polynomial used for generation in order to efficiently decode the Goppa portion.
+
+** Encryption
+
+Then, the encryption scheme can be described as follows: Alice publishes her public key. Bob wants to encrypt and send a message $m$. Bob encrypts the message by first choosing a random vector $z$  of length $k$ and of weight $t$. The message $m$ is encoded using the matrix $G'$ found in the public key and the vector $z$ is added to the encoded message. The ciphertext is thus given by
+
+$$C = mG' + z$$
+
+** Decryption
+
+Alice receives the ciphertext C and proceeds to decrypt using her private key.
+
+By calculating $CP^{-1}$ Alice gets $(mS)G+zP^{-1}$. If $CP{^-1}$ is decoded using the decoding algorithm for the chosen Goppa code, then mSG will be obtained. The message m can be found by multiplying with the inverses of $S$ and $G: m = mSG(S^-1)G^{-1}$.
+
+* Goppa Codes
+
+In his paper in 1978, McEliece recommended the linear code that should be used, $G$, be a binary Goppa Code.
+
+** Parameters
+
+Let $GF(p^m)$ be a Galois Field, $p$ be prime, and $m$ be an integer.
+
+A Goppa code is a \[$n$, $k$, $d$\] linear code, where $n$ is the code length, $k$ is the length of the message itself, and $d$ is the minimum distance between each codeword.  To correct $t$ errors, we choose a Goppa polynomial of degree $t$.  For Goppa codes, $n = 2^m$. $k$ is the dimension of the Goppa polynomial and $k \geq n - mt$.  The Hamming distance is $d \geq 2t+1$ [[McEliece and Goppa][4]].
+
+** General Goppa Codes.
+
+*** Creating a Goppa Code
+A Goppa code $\Gamma$ is made from two components, $L$ and $g$.  That is
+
+$$\Gamma = (L, g)$$
+
+$L$ is a set of elements that represents $GF(p^m)$ and is written as $GF(2)\[\alpha\]$.  To find $L$, see [[Appendix][]], or the example in the Binary Goppa section.  Then
+
+$$L = \{\alpha_1, alpha_2, \dots, \alpha_n}, L \in GF(p^m)$$
+
+$g$ is the Goppa polynomial.  It's an irreducible polynomial in $GF(p^m)$ with degree $t$, so we choose the Goppa polynomal to correct up to $t$ errors.  Then
+
+$$ g = g_0 + g_1(x) + \dots + g_t(x^t) = \sum_{i=0}^{t} g_ix^i $$
+
+For the Goppa code to be valid, $g(L) \neq 0$.  That is, each $g(\alpha_i) \neq 0$ for each $alpha_i \in L$.
+
+*** Generating valid code words
+
+To generate a valid code $c$, in $C$, the valid set of codewords in Goppa code $\Gamma$, we define
+
+$$R_c(z) = \sum_{i=1}^{n} c_i(x - \alpha_i)^-1$$
+
+A codeword $c$ is valid if and only if $R_c(x) \equiv 0$ (mod $g$).  That means Goppa polynomial $g(x)$ divides $R_c(x)$.
+
+** Binary Goppa Codes.
+
+With binary Goppa codes, our Galois Field is $GF(2^m)$.
+
+*** Finding the parity check matrix
+
+For binary Goppa codes, the parity check matrix $H$ is
+
+H = VD =
+\begin{pmatrix}
+1 & 1 & 1 & \cdots & 1\\
+L_0^1 & L_1^1 & L_2^1 & \cdots & L_{n-1}^1\\
+L_0^2 & L_1^2 & L_2^2 & \cdots & L_{n-1}^2\\
+\vdots & \vdots & \vdots & \ddots & \vdots \\
+L_0^t & L_1^t & L_2^t & \cdots & L_{n-1}^t
+\end{pmatrix}
+\begin{pmatrix}
+\frac{1}{g(L_0)} & & & & \\
+ & \frac{1}{g(L_1)} & & & \\
+ & & \frac{1}{g(L_2)} & & \\
+ & & & \ddots & \\
+ & & & & \frac{1}{g(L_{n-1})}
+\end{pmatrix}
+
+where $V$ is the Vandermonde matrix with $\alpha$ from $L$, and $D$ is the Identity matrix weighted with $g(L_{i})$.
+
+*** Finding the generator matrix
+
+The generator matrix, by definition, is the null space matrix of $H$.  That is
+
+$$GH^T = 0$$
+
+We can use that to solve for $G$.
+
+*** Encoding Binary Goppa Codes
+
+Encoding a message with is simple.  We find
+
+$$c = \muG$$
+
+where $c$ is the encrypted ciphertext, $\mu$ is the original message, and $G$ is the generator matrix.
+
+*** Decoding Binary Goppa Codes
+
+If the recieved encrypted text $c$ has no errors, then $Hc^T \equiv 0$ (mod 2).
+
+To decode a an error free message, we just need to solve
+
+???
+
+*** Correcting Errors in Codewords
+
+If the recieved encrypted text $c$ has errors, then $Hc^T \not\equiv 0$ (mod 2).  There are several algorithms to correct the corrupted text.  We will use Patterson's algorithm, which is simple to implement, and can correct
+
+** Example
+
+Let's generate a Goppa code from the extended Galois field $GF(2^3)$.  We need to find $\Gamma = (L, g)$.
+
+*** Finding $L$
+
+We begin by rewriting $GF(2^3) = GF(2)[x]/[x^7 - 1]$.  To find irreducible polynomials, we can factor
+
+$$x^7-1 = (x+1)(x^2+x+1)(x^4+x+1)(x^4+x^3+1)(x^4+x^3+x^2+x+1)$$
+
+Let us pick
+
+* Analysis of the McEliece cryptosystem
+
+** Why binary Goppa codes?
+
+** Security
+
+** Attacks
+
+** Drawbacks
+
+**
+
+
+* Programming the McEliece cryptosystem
+
+stuff
+
+* Appendix
+
+** Galois Fields
+
+In order to understand how Goppa Codes works, we need to understand how Galois Fields, or finite fields works.
+
+** Fields
+
+Informally, fields are a set of numbers where we can add, subtract, multiply, and divide (find the inverse of).  Fields are closed, so every operation is another valid element in the set.  See
+
+** Finite or Galois Fields
+
+We can build a field with a finite set of elements.  Galois found out that these fields exists only with $p^m$ elements, where $p$ is prime, and $m$ is an integer.  The reasoning is that we can only guarantee that an inverse exists and is closed for every element if the field is prime.
+
+There are two types of Galois fields.  Primary Galois fields are when $m$ in $GF(p^m)$ is 1.  Extended Galois fields are when $m \geq 1$.
+
+*** Arithmetic in primary Galois Fields
+
+With primary Galois Fields $GF(p)$, arithmetic is relative simple.  The elements in the field are $\{0, 1, \dots, p-1\}$, exactly the same as a integer (mod p).  Addition of two elements, $a, b$ is defined as
+
+*** Arithmetic in extended Galois Fields
+
+
+
+** Goppa Codes
+
+*** Finding $L$
+
+*** Finding $g$
+
+
+* References
+
+#+NAME: RSA
+1.  Rivest, R.; Shamir, A.; Adleman, L. (February 1978). "A Method for Obtaining Digital Signatures and Public-Key Cryptosystems". Communications of the ACM. 21 (2): 120–126. doi:10.1145/359340.35934
+#+NAME: PQCrypto
+2.  Daniel J. Bernstein, Johannes Buchmann, Erik Dahmen (editors). Post-quantum cryptography. Springer, Berlin, 2009. Chapter 1.  ISBN 978-3-540-88701-0
+#+NAME: McEliece
+3.  McEliece, Robert J. (1978). "A Public-Key Cryptosystem Based On Algebraic Coding Theory". DSN Progress Report. 44: 114–116. Bibcode:1978DSNPR..44..114M
+#+NAME: McEliece and Goppa
+4.  Valentijn, Ashley, "Goppa Codes and Their Use in the McEliece Cryptosystems" (2015). Syracuse University Honors Program Capstone Projects. 845.
+http://surface.syr.edu/honors_capstone/845
