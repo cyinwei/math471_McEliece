@@ -92,7 +92,7 @@ class BinGoppaCode:
         foundPoly = False
         x = PolynomialRing(gf2m,repr(a)).gen()
         for i in range(len(L)):
-            gpoly = x^t + L[i]*x + L[4+i]
+            gpoly = x^t + L[i]*x + L[i]
         #Checking that satisfies Goppa polynomial conditions e.g.Irreducible and elements of L not roots
             foundRoot = False
             for elem in L:
