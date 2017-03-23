@@ -74,8 +74,6 @@ class BinGoppaCode:
         self.t = t
         self.n = 2**m
         self.k = self.n-m*t
-        self.gen_mx = [[]]
-        self.parity_mx = [[]]
         self.L = []
         self.D = self.n-self.k+1
         
@@ -90,19 +88,27 @@ class BinGoppaCode:
         L = [a**i for i in range(2,2+self.n)]
         self.L = L
         
-        #Generating goppa polynomial - fixed form for now
+        #Generating goppa polynomial 
+        foundPoly = False
         x = PolynomialRing(gf2m,repr(a)).gen()
-        gpoly = x^t + x + L[4]
-        self.gpoly = gpoly
+        for i in range(len(L)):
+            gpoly = x^t + L[i]*x + L[4+i]
         #Checking that satisfies Goppa polynomial conditions e.g.Irreducible and elements of L not roots
-        if not gpoly.is_irreducible():
-            print "not irreducible"
-            return    # try another polynomial check for each L not being a root
-        #Generate parity matrix H
-        for elem in L:
-            if gpoly(elem) == gf2m(0):
-                print "an element from L is a root of g"
-                return
+            foundRoot = False
+            for elem in L:
+                if gpoly(elem) == gf2m(0):
+                    foundRoot = True
+                    break
+        #If poly is irreducible and non rooots where found then finsh, otherwise try another poly
+            if gpoly.is_irreducible() and not foundRoot:
+                foundPoly = True
+                break    
+                
+        if not foundPoly:
+            print "Could not generate Goppa polynomial"
+            return 
+
+        self.gpoly = gpoly
                 
         #Constructing parity matrix
                 
