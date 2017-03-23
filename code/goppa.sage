@@ -1,49 +1,87 @@
-#from coding import *
+from random import randint
 
 class McEliecePKS:
-    def __init__(self, m, k):
-        self.k = k
+    def __init__(self, m, t):
         self.m = m
-        self.n = (2**self.m)-1
-        self.t = (self.n-self.k)
+        self.t = t
+        self.n = 2**m
+        self.k = self.n-m*t
         self.pub_key = None
         self.priv_key = None
-        goppacode = BinGoppaCode(self.m,self.k)
-        # Generating scramble matrix S
-        data = [[random.randint(0,1) for i in range(len(goppacode.gen_mx))]for i in range(len(goppacode.gen_mx))]
-        S = Matrix(data=data).to_Zmod(2)
-        # Generating permutation matrix P
-        data = [[random.randint(0,1) for i in range(len(goppacode.gen_mx[0]))]for i in range(len(goppacode.gen_mx[0]))]
-        P = Matrix(data=data).to_Zmod(2)
-        G_ =   S*P*goppacode.gen_mx
+        self.goppacode = BinGoppaCode(m,t)
+        
+        gf2.<a> = GF(2)
+        gf2m.<a> = GF(2**m)
+        ## Generating scramble matrix S
+        while True:
+            S = matrix(gf2, [[randint(0,1) for i in range(self.goppacode.G_Goppa.nrows())]for i in range(self.goppacode.G_Goppa.nrows())])
+            if S.is_invertible():
+                break
+            
+        ## Generating permutation matrix P
+        
+        #data = [[0 for i in range(self.goppacode.G_Goppa.ncols())]for i in range(self.goppacode.G_Goppa.ncols())]
+        #for row in data:
+            #row[randint(0,self.goppacode.G_Goppa.ncols()-1)] = 1
+        #P = matrix(gf2, data)
+        
+        ## Set up the random scrambler matrix
+        #S = matrix(GF(2),k,[random()<0.5 for i in range(k^2)]);
+        #while (rank(S) < k) :
+            #S[floor(k*random()),floor(k*random())] +=1;
+
+        ## Set up the permutation matrix
+        rng = range(n); P = matrix(GF(2),n);
+        for i in range(n):
+            p = floor(len(rng)*random());
+            P[i,rng[p]] = 1; rng=rng[:p]+rng[p+1:];
+            
+        G_ =   S*self.goppacode.G_Goppa*P
         self.pub_key = (G_, self.t)
-        self.priv_key = (goppacode.gpoly, goppacode.gen_mx, S, P)
+        self.priv_key = (self.goppacode.gpoly, self.goppacode.G_Goppa, S, P)
         
     def encrypt(self, m, pub_key):
-        c = m*(pub_key[0])
+        gf2 = GF(2)
+        G_ = pub_key[0]
+        t = pub_key[1]
+        c = m*G_
         # random error vector 
-        e = [0 for i in range(len(pub_key[0]))]
+        e = [0 for i in range(G_.ncols())]
         for i in range(t):
-            e[random.randint(0,len(pub_key[0]))] = 1
+            e[randint(0,G_.ncols()-1)] = 1
+        e = matrix(gf2, e)
         c = c + e
         return c
     
+    #here
     def decrypt(self, c):
+        priv_key = self.priv_key
+        P = priv_key[3]
+        S = priv_key[2]
+        gpoly = priv_key[0]
+        G_Goppa = priv_key[1]
+        
         #Getting inverse of P
-        m = priv_key[3].join_with(Matrix.get_identity(priv_key[3].rows))
-        m = m.get_reduced_echelon()
-        m = m.submatrix(priv_key[3].rows,priv_key[3].rows,m.rows,m.cols)
-        m = m*c
+        #m = P.join_with(Matrix.get_identity(P.rows))
+        #m = m.get_reduced_echelon()
+        #m = m.submatrix(P.rows,P.rows,m.rows,m.cols)
+        #m = m*c
+        print P
+        print ~P
+        m = c*(~P)
+        
         # Correcting errors
-        m = goppacode.decode(m)
+        m = self.goppacode.decode(m)
         # Final calculations
-        m = (priv_key[0].transpose()).join_with(m.transpose())
-        m = m.get_reduced_echelon()
-        # finding inverse of S
-        s_ = priv_key[2].join_with(Matrix.get_identity(priv_key[2].rows))
-        s_ = m.get_reduced_echelon()
-        s_ = m.submatrix(priv_key[2].rows,priv_key[2].rows,m.rows,m.cols)
-        m = s_*m
+        #m = (gpoly.transpose()).join_with(m.transpose())
+        #m = m.get_reduced_echelon()
+        ## finding inverse of S
+        #s_ = S.join_with(Matrix.get_identity(S.rows))
+        #s_ = m.get_reduced_echelon()
+        #s_ = m.submatrix(S.rows,S.rows,m.rows,m.cols)
+        #m = s_*m
+        m = (S*G_Goppa).solve_left(m)
+        
         return m
 
 class BinGoppaCode:
@@ -205,20 +243,40 @@ class BinGoppaCode:
         
         return y+error;
     
-    
+m=5    
+t=4
+n=2**m
+k=n-m*t
 
-testC = BinGoppaCode(4,2)
-print  "G:",testC.G_Goppa,"\n"
-print "H:",testC.H_Goppa, "\n"
-
+testE = McEliecePKS(m,t)
+#print "priv:", testE.priv_key 
+#print "pub:", testE.pub_key
 gf2 = GF(2)
-c = testC.encode(matrix(gf2, [0,0,0,0,0,0,0,1] ))
+m = matrix(gf2,[randint(0,1) for i in range(k)])
+print "m: ",m
+c = testE.encrypt(m, testE.pub_key)
 print "c: ",c
-ce = c + matrix(gf2, [0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0])
-print "ce:",ce
-d = testC.decode(ce)
-
+d = testE.decrypt(c)
 print "d :",d
+#testC = BinGoppaCode(m,t)
+#print  "G:",testC.G_Goppa,"\n"
+#print "H:",testC.H_Goppa, "\n"
+
+#gf2 = GF(2)
+#m = matrix(gf2,[randint(0,1) for i in range(k)])
+#print "m: ",m
+#c = testC.encode(m)
+#print "c: ",c
+#e = [0 for i in range(c.ncols())]
+#for i in range(t):
+    #e[randint(0,c.ncols()-1)] = 1
+#e = matrix(gf2, e)
+#print "e:",e
+#ce = c + e
+#print "ce:",ce
+#d = testC.decode(ce)
+
+#print "d :",d
 
 
         
